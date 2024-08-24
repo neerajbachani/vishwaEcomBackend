@@ -86,7 +86,9 @@ return savedOrder
 //             size: item.size,
 //             userId: item.userId,
 //             discount: item.discount,
-//             note:item.note,
+//             // note:item.note,
+//                     customizationImage: item.customizationImage,
+//         customizationNote: item.customizationNote,
 //         });
 
 //         const createdOrderItem = await orderItem.save();
@@ -101,6 +103,8 @@ return savedOrder
 //         discount: cart.discount,
 //         totalItem: cart.totalItem,
 //         shippingAddress: addressObject,
+//         customizationImage: cart.customizationImage,
+//     customizationNote: cart.customizationNote
         
 //     });
     
