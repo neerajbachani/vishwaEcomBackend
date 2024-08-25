@@ -297,9 +297,14 @@ async function getAllProducts(reqQuery) {
   }
 
   // Handle sorting
-  if (sort) {
-    const sortDirection = sort === "price_high" ? -1 : 1;
-    query = query.sort({ discountedPrice: sortDirection });
+ 
+  if (sort === "price_high") {
+    query = query.sort({ discountedPrice: -1, productOrder: 1 });
+  } else if (sort === "price_low") {
+    query = query.sort({ discountedPrice: 1, productOrder: 1 });
+  } else {
+    // Always sort by productOrder as the primary or secondary sort
+    query = query.sort({ productOrder: 1 });
   }
 
   const totalProducts = await Product.countDocuments(query);

@@ -63,6 +63,33 @@ const getAllProducts = async (req, res) => {
     }
   };
 
+  const updateProductOrder = async (req, res) => {
+    try {
+      const orderData = req.body;
+      for (let item of orderData) {
+        await Product.findByIdAndUpdate(item.id, { productOrder: item.productOrder });
+      }
+      
+      // Fetch updated products
+      const updatedProducts = await productService.getAllProducts({
+        query: '',
+        pageNumber: 1,
+        pageSize: orderData.length,
+        sort: "productOrder"
+      });
+      
+      res.json({
+        message: 'Product order updated successfully',
+        updatedProducts: updatedProducts.content
+      });
+      console.log("'Product order updated successfully'");
+      console.log(orderData);
+    } catch (error) {
+      console.error('Error updating product order:', error);
+      res.status(500).json({ message: 'Error updating product order', error: error.message });
+    }
+  };
+
 // const searchProducts = async (req, res) => {
 //     const { query , sort } = req.query;
 //     console.log("req",req)
@@ -103,4 +130,4 @@ const createMultipleProducts = async (req, res) => {
     }
 }
 
-module.exports = { createProduct, deleteProduct, updateProduct , getAllProducts, createMultipleProducts, findProductById}
+module.exports = { createProduct, deleteProduct, updateProduct , getAllProducts, createMultipleProducts, findProductById , updateProductOrder}
