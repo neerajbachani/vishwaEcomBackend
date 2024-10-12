@@ -3,63 +3,85 @@ const cloudinary = require('../config/cloudinary');
 const streamifier = require('streamifier');
 
 const { createReadStream } = require('fs');
+const { default: mongoose } = require("mongoose");
 
 async function createProduct(reqData, files) {
   const image = files[0]; // Assuming there's only one file in the files array  
   try {
-      if (image) {
-          const stream = cloudinary.uploader.upload_stream(
-              {
-                 
-                  file: image.path || '',
-              },
-              (error, result) => {
-                  if (error) {
-                      return res.status(500).send({ error: 'Failed to upload image' });
-                  }
+    if (image) {
+      const stream = cloudinary.uploader.upload_stream(
+        {
+          file: image.path || '',
+        },
+        async (error, result) => {
+          if (error) {
+            throw new Error('Failed to upload image');
+          }
+          
+          // Helper function to safely get the first element of an array or return the value itself
+          const getFirstOrValue = (value) => Array.isArray(value) ? value[0] : value;
+          
+          // Calculate discount
+          const price = Number(getFirstOrValue(reqData.price));
+          const discountedPrice = Number(getFirstOrValue(reqData.discountedPrice));
+          const discount = Number(((price - discountedPrice) / price) * 100).toFixed(2);
 
-                  // Calculate discount
-                  // Calculate discount
-const discount = Number(((reqData.price - reqData.discountedPrice) / reqData.price) * 100).toFixed(2);
+          let productOrder = 0;
+          if (reqData.productOrder) {
+            // If a specific order is requested, we need to shift existing products
+            if (Number(getFirstOrValue(reqData.productOrder)) > 0) {
+              await Product.updateMany(
+                { productOrder: { $gte: Number(getFirstOrValue(reqData.productOrder)) } },
+                { $inc: { productOrder: 1 } }
+              );
+              productOrder = Number(getFirstOrValue(reqData.productOrder));
+            }
+          } else {
+            // If no order specified, put it at the end
+            const lastProduct = await Product.findOne({}, {}, { sort: { productOrder: -1 } });
+            productOrder = lastProduct ? lastProduct.productOrder + 1 : 1;
+          }
 
-                  const detailsAsBulletPoints = reqData.details.split('. ').map((detail) => `<li>${detail}</li>`).join('');
-                  const product = new Product({
-                      name: reqData.name,
-                      description1: reqData.description1,
-                      description2: reqData.description2,
-                      description3: reqData.description3,
-                      price: reqData.price,
-                      discountedPrice: reqData.discountedPrice,
-                      quantity: reqData.quantity,
-                      color: reqData.color,
-                      resin: reqData.resin,
-                      varmalaPreservation: reqData.varmalaPreservation,
-                      wallClock: reqData.wallClock,
-                      namePlate: reqData.namePlate,
-                      navkarMantraFrame: reqData.navkarMantraFrame,
-                      geodeArt: reqData.geodeArt,
-                      workshop: reqData.workshop,
-                      resinSpecial: reqData.resinSpecial,
-                      resinRawMaterials: reqData.resinRawMaterials,
-                      digitalArt: reqData.digitalArt,
-                      festivalSpecial: reqData.festivalSpecial,
-                      jewel: reqData.jewel,
-                      business: reqData.business,
-                      lippanArt: reqData.lippanArt,
-                      vintage: reqData.vintage,
-                      option: reqData.option,
-                      details: `<ul>${detailsAsBulletPoints}</ul>`,
-                      discount: discount,
-                      image: result.secure_url, // Add the Cloudinary image URL to the product object
-                  });
-                  return product.save();
-              }
-          );
-          const bufferStream = streamifier.createReadStream(image.buffer);
-          bufferStream.pipe(stream);
-      }
+          const product = new Product({
+            name: getFirstOrValue(reqData.name),
+            description1: getFirstOrValue(reqData.description1),
+            description2: getFirstOrValue(reqData.description2),
+            description3: getFirstOrValue(reqData.description3),
+            price: price,
+            discountedPrice: discountedPrice,
+            quantity: Number(getFirstOrValue(reqData.quantity)),
+            color: getFirstOrValue(reqData.color),
+            resin: getFirstOrValue(reqData.resin),
+            varmalaPreservation: getFirstOrValue(reqData.varmalaPreservation),
+            wallClock: getFirstOrValue(reqData.wallClock),
+            namePlate: getFirstOrValue(reqData.namePlate),
+            navkarMantraFrame: getFirstOrValue(reqData.navkarMantraFrame),
+            geodeArt: getFirstOrValue(reqData.geodeArt),
+            workshop: getFirstOrValue(reqData.workshop),
+            resinSpecial: getFirstOrValue(reqData.resinSpecial),
+            resinRawMaterials: getFirstOrValue(reqData.resinRawMaterials),
+            digitalArt: getFirstOrValue(reqData.digitalArt),
+            festivalSpecial: getFirstOrValue(reqData.festivalSpecial),
+            jewel: getFirstOrValue(reqData.jewel),
+            business: getFirstOrValue(reqData.business),
+            lippanArt: getFirstOrValue(reqData.lippanArt),
+            vintage: getFirstOrValue(reqData.vintage),
+            option: getFirstOrValue(reqData.option),
+            details: getFirstOrValue(reqData.details),
+            discount: discount,
+            productOrder,
+            image: result.secure_url,
+          });
+
+          return product.save();
+        }
+      );
+
+      const bufferStream = streamifier.createReadStream(image.buffer);
+      bufferStream.pipe(stream);
+    }
   } catch (error) {
-      res.status(500).send(error);
+    throw error; // Rethrow the error to be handled by the calling function
   }
 }
 
@@ -163,71 +185,6 @@ async function findProductById(id) {
     return product;
 }
 
-// In your product service file
-// async function getAllProducts(reqQuery) {
-//   let { query: searchQuery, sizes, minPrice, maxPrice, minDiscount, sort, stock, pageNumber, pageSize } = reqQuery;
-//   pageNumber = pageNumber || 1;
-//   pageSize = pageSize || 10;
-
-//   let query = Product.find();
-
-//   if (searchQuery) {
-//     const regex = new RegExp(query, 'i'); 
-//     const products = await Product.find({ name: { $regex: regex } });
-//     res.json({ suggestions: products });
-//   }
-
-//   const filterFields = [
-//       'color', 'resin', 'varmalaPreservation', 'wallClock', 'namePlate', 'navkarMantraFrame', 'resinSpecial', 
-//       'workshop', 'digitalArt', 'jewel', 'festivalSpecial', 'business', 'lippanArt', 'vintage', 'geodeArt', 
-//       'resinRawMaterials'
-//   ];
-  
-//   filterFields.forEach(field => {
-//       if (reqQuery[field]) {
-//           const valueSet = new Set(reqQuery[field].split(",").map(value => value.trim().toLowerCase()));
-//           const valueRegex = valueSet.size > 0 ? new RegExp([...valueSet].join("|"), "i") : null;
-//           if (valueRegex) {
-//               query = query.or([{ [field]: valueRegex }]);
-//           }
-//       }
-//   });
-
-//   if (sizes) {
-//       const sizesSet = new Set(sizes.split(",").map(value => value.trim().toLowerCase()));
-//       query = query.where("sizes.name").in([...sizesSet]);
-//   }
-
-//   if (minPrice && maxPrice) {
-//       query = query.where('discountedPrice').gte(minPrice).lte(maxPrice);
-//   }
-
-//   if (minDiscount) {
-//       query = query.where("discount").gte(minDiscount);
-//   }
-
-//   if (stock) {
-//       if (stock == "in_stock") {
-//           query = query.where("quantity").gt(0);
-//       } else if (stock == "out_of_stock") {
-//           query = query.where("quantity").eq(0);
-//       }
-//   }
-
-//   if (sort) {
-//       const sortDirection = sort === "price_high" ? -1 : 1;
-//       query = query.sort({ discountedPrice: sortDirection });
-//   }
-
-//   const totalProducts = await Product.countDocuments(query);
-
-//   const skip = (pageNumber - 1) * pageSize;
-//   query = query.skip(skip).limit(pageSize);
-//   const products = await query.exec();
-//   const totalPages = Math.ceil(totalProducts / pageSize);
-
-//   return { content: products, currentPage: pageNumber, totalPages };
-// }
 async function getAllProducts(reqQuery) {
   let {
     query: searchQuery,
@@ -318,6 +275,56 @@ async function getAllProducts(reqQuery) {
   return { content: products, currentPage: pageNumber, totalPages, totalProducts };
 }
 
+async function reorderProduct(productId, newOrder) {
+  const session = await mongoose.startSession();
+  session.startTransaction();
+
+  try {
+    const product = await Product.findById(productId).session(session);
+    if (!product) {
+      throw new Error('Product not found');
+    }
+
+    const oldOrder = product.productOrder;
+    if (newOrder === oldOrder) {
+      await session.abortTransaction();
+      return product;
+    }
+
+    // Update orders of other products
+    if (newOrder < oldOrder) {
+      // Moving up in order
+      await Product.updateMany(
+        {
+          productOrder: { $gte: newOrder, $lt: oldOrder },
+          _id: { $ne: productId }
+        },
+        { $inc: { productOrder: 1 } }
+      ).session(session);
+    } else {
+      // Moving down in order
+      await Product.updateMany(
+        {
+          productOrder: { $gt: oldOrder, $lte: newOrder },
+          _id: { $ne: productId }
+        },
+        { $inc: { productOrder: -1 } }
+      ).session(session);
+    }
+
+    // Update the order of the target product
+    product.productOrder = newOrder;
+    await product.save({ session });
+
+    await session.commitTransaction();
+    return product;
+  } catch (error) {
+    await session.abortTransaction();
+    throw new Error(`Failed to reorder product: ${error.message}`);
+  } finally {
+    session.endSession();
+  }
+}
 
 async function createMultipleProducts(products){
     for(let product of products){
@@ -325,6 +332,6 @@ async function createMultipleProducts(products){
     }
 }
 
-module.exports = { createProduct, deleteProduct, updateProduct, findProductById, getAllProducts, createMultipleProducts }
+module.exports = { createProduct, deleteProduct, updateProduct, findProductById, getAllProducts, createMultipleProducts, reorderProduct }
 
   

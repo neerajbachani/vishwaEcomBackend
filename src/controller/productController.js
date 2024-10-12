@@ -31,7 +31,29 @@ const deleteProduct = async (req, res) => {
         return res.status(500).send({ error: error.message });
     }
 }
+const reorderProduct = async (req, res) => {
+  try {
+    const { productId } = req.params;
+    const { newOrder } = req.body;
 
+    // Validate input
+    if (!productId || newOrder === undefined || newOrder < 0) {
+      return res.status(400).json({ 
+        error: "Product ID and a valid new order (non-negative number) are required" 
+      });
+    }
+
+    const updatedProduct = await productService.reorderProduct(productId, newOrder);
+    
+    return res.status(200).json({
+      message: "Product reordered successfully",
+      product: updatedProduct
+    });
+  } catch (error) {
+    console.error('Error reordering product:', error);
+    return res.status(500).json({ error: error.message });
+  }
+};
 
 
 const findProductById = async (req, res) => {
@@ -130,4 +152,4 @@ const createMultipleProducts = async (req, res) => {
     }
 }
 
-module.exports = { createProduct, deleteProduct, updateProduct , getAllProducts, createMultipleProducts, findProductById , updateProductOrder}
+module.exports = { createProduct, deleteProduct, updateProduct , getAllProducts, createMultipleProducts, findProductById , updateProductOrder, reorderProduct}

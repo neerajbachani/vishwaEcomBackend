@@ -26,7 +26,28 @@ router.get('/suggestions', async (req, res) => {
     res.status(500).json({ error: 'Internal server error' });
   }
 });
+router.patch('/:productId/reorder', authenticate, productController.reorderProduct);
+
 // Backend code (e.g., Express.js)
 // router.get("/search",productController.searchProducts)
+// In your backend API routes
+router.post('/reset-orders', async (req, res) => {
+  try {
+    // Get all products sorted by creation date
+    const products = await Product.find().sort({ createdAt: 1 });
+    
+    // Update each product with a new sequential order
+    for (let i = 0; i < products.length; i++) {
+      await Product.findByIdAndUpdate(products[i]._id, {
+        productOrder: i + 1
+      });
+    }
+    
+    res.status(200).json({ message: 'Product orders reset successfully' });
+  } catch (error) {
+    res.status(500).json({ message: 'Error resetting product orders', error: error.message });
+  }
+});
+
 
 module.exports = router

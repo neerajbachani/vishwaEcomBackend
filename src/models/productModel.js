@@ -30,7 +30,7 @@ const productSchema = new mongoose.Schema({
       },
       details: {
         type: String,
-        required: true,
+        
       },
       color: {
         type: String,  
@@ -99,6 +99,6 @@ const productSchema = new mongoose.Schema({
         default: Date.now(),
       }
 });
-productSchema.index({ productOrder: 1 }, { unique: true });
+
 const Product = mongoose.model('products',productSchema)
 module.exports = Product
