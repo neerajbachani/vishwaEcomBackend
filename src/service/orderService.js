@@ -2,6 +2,8 @@ const Address = require("../models/addressmodel");
 const OrderItem = require("../models/orderItemsModel");
 const Order = require("../models/orderModel");
 const cartService = require("../service/cartService")
+const shiprocketService = require('../service/shiprocketService');
+
 
 async function createOrder(user, shippAddress) {
     let address 
@@ -30,6 +32,7 @@ for (const item of cart.cartItems) {
         price: item.price,
         product: item.product,
         quantity: item.quantity,
+        weight: item.weight,
         size: item.size,
         userId: item.userId,
         discount: item.discount,
@@ -41,11 +44,15 @@ for (const item of cart.cartItems) {
     const createdOrderItem = await orderItem.save();
     orderItems.push(createdOrderItem);
 }
+const shippingInfo = await calculateDeliveryCharge(address, orderItems);
 const createdOrder = new Order({
     user: user,
     orderItems,
+    deliveryCharge: shippingInfo.deliveryCharge,
+    estimatedDeliveryDays: shippingInfo.estimatedDeliveryDays,
+    courierName: shippingInfo.courierName,
     totalPrice: cart.totalPrice,
-    totalDiscountedPrice: cart.totalDiscountedPrice,
+    totalDiscountedPrice: cart.totalDiscountedPrice + shippingInfo.deliveryCharge,
     discount: cart.discount,
     totalItem: cart.totalItem,
     shippingAddress: address,
@@ -55,83 +62,70 @@ const createdOrder = new Order({
 });
 
 const savedOrder = await createdOrder.save();
-return savedOrder
+console.log("order hai ji",savedOrder);
+return savedOrder;
 }
-// async function createOrder(user, shippAddress) {
-//     let address;
-
-//     if (shippAddress._id) {
-//         let existAddress = await Address.findById(shippAddress._id);
-//         address = existAddress;
-//     } else {
-//         address = new Address(shippAddress);
-//         address.user = user;
-//         await address.save();
-//         user.address.push(address);
-//         await user.save();
-//     }
-
-//     // Convert user and address to plain JavaScript objects
-//     const userObject = user.toObject();
-//     const addressObject = address.toObject();
-
-//     const cart = await cartService.findUserCart(user._id);
-//     const orderItems = [];
-
-//     for (const item of cart.cartItems) {
-//         const orderItem = new OrderItem({
-//             price: item.price,
-//             product: item.product,
-//             quantity: item.quantity,
-//             size: item.size,
-//             userId: item.userId,
-//             discount: item.discount,
-//             // note:item.note,
-//                     customizationImage: item.customizationImage,
-//         customizationNote: item.customizationNote,
-//         });
-
-//         const createdOrderItem = await orderItem.save();
-//         orderItems.push(createdOrderItem);
-//     }
-
-//     const createdOrder = new Order({
-//         user: userObject,
-//         orderItems,
-//         totalPrice: cart.totalPrice,
-//         totalDiscountedPrice: cart.totalDiscountedPrice,
-//         discount: cart.discount,
-//         totalItem: cart.totalItem,
-//         shippingAddress: addressObject,
-//         customizationImage: cart.customizationImage,
-//     customizationNote: cart.customizationNote
-        
-//     });
-    
-
-//     const savedOrder = await createdOrder.save();
-//     return savedOrder;
-// }
 
 async function getAddressById(addressId){
     const address = await Address.findById(addressId).populate("user")
     return address
 }
 
+async function calculateDeliveryCharge(address, orderItems) {
+    const orderDetails = {
+        shippingAddress: address,
+        orderItems: orderItems,
+        totalDiscountedPrice: orderItems.reduce((total, item) => total + item.discountedPrice * item.quantity, 0)
+    };
 
+    const shippingInfo = await shiprocketService.calculateShippingRate(orderDetails);
+    console.log("shipping info hai bhai",shippingInfo)
+    return shippingInfo;
+}
+
+// Modify your placeOrder function to include Shiprocket integration
 async function placeOrder(orderId) {
     const order = await findOrderById(orderId);
 
     order.orderStatus = "PLACED";
     order.paymentDetails.paymentStatus = "COMPLETED";
 
+
     return await order.save();
+}
+
+// Add new functions for Shiprocket-specific operations
+async function trackShipment(orderId) {
+    const order = await findOrderById(orderId);
+    if (!order.shipmentDetails || !order.shipmentDetails.shipmentId) {
+        throw new Error('No shipment found for this order');
+    }
+    
+    return await shiprocketService.trackShipment(order.shipmentDetails.shipmentId);
+}
+
+async function generateShippingLabel(orderId) {
+    const order = await findOrderById(orderId);
+    if (!order.shipmentDetails || !order.shipmentDetails.shipmentId) {
+        throw new Error('No shipment found for this order');
+    }
+    
+    return await shiprocketService.generateLabel(order.shipmentDetails.shipmentId);
+}
+
+async function generateOrderInvoice(orderId) {
+    const order = await findOrderById(orderId);
+    if (!order.shipmentDetails || !order.shipmentDetails.shiprocketOrderId) {
+        throw new Error('No Shiprocket order found');
+    }
+    
+    return await shiprocketService.generateInvoice(order.shipmentDetails.shiprocketOrderId);
 }
 
 async function confirmedOrder(orderId) {
     const order = await findOrderById(orderId);
-
     order.orderStatus = "CONFIRMED";
+    
 
     return await order.save();
 }
@@ -141,6 +135,8 @@ async function shipOrder(orderId) {
 
     order.orderStatus = "SHIPPED";
 
+
+
     return await order.save();
 }
 
@@ -148,6 +144,7 @@ async function deliverOrder(orderId) {
     const order = await findOrderById(orderId);
 
     order.orderStatus = "DELIVERED";
+
 
     return await order.save();
 }
@@ -202,7 +199,11 @@ module.exports = {
     usersOrderHistory,
     getAllOrders,
     deleteOrder, 
-    getAddressById
+    getAddressById,
+    trackShipment,
+    generateShippingLabel,
+    generateOrderInvoice,
+    calculateDeliveryCharge
 }
 
 

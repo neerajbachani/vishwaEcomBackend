@@ -86,5 +86,8 @@ app.use("/api/ourProduct", ourProductRouter)
 const ourFeaturedProductRouter = require("./routes/ourFeaturedProductRoute")
 app.use("/api/ourFeaturedProduct", ourFeaturedProductRouter)
 
+const shiprocketTestRoutes = require('./service/testshiprocketapi');
+app.use('/api/test', shiprocketTestRoutes);
+
 
 module.exports = app;

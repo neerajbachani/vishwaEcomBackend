@@ -68,6 +68,7 @@ async function createProduct(reqData, files) {
             vintage: getFirstOrValue(reqData.vintage),
             option: getFirstOrValue(reqData.option),
             details: getFirstOrValue(reqData.details),
+            weight: getFirstOrValue(reqData.weight) || 10,
             discount: discount,
             productOrder,
             image: result.secure_url,
@@ -123,9 +124,9 @@ async function updateProduct(productId, reqData, files) {
       product.lippanArt = reqData.lippanArt || product.lippanArt;
       product.vintage = reqData.vintage || product.vintage;
       product.option = reqData.option || product.option;
-      product.details = reqData.details || product.details;
+      product.details = reqData.details || product.details; 
       product.discount = discount;
-
+      product.weight = reqData.weight || product.weight
       let newImageUrl = product.image; // Initialize with the current image URL
 
       // Check if a new image was uploaded

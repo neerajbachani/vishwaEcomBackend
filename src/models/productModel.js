@@ -88,7 +88,9 @@ const productSchema = new mongoose.Schema({
         type: Number,
         default: 0,
       }],
-      
+      weight:{
+        type: Number,
+      },
       // category:[{
       //   type: mongoose.Schema.Types.ObjectId,
       //   ref: "categories",

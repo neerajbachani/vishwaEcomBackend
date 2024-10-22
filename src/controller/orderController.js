@@ -29,6 +29,16 @@ const findAddressById = async (req , res) => {
     }
 }
 
+const calculateDeliveryCharge = async (req, res) => {
+    try {
+        const { address, cartItems } = req.body;
+        const shippingInfo = await orderService.calculateDeliveryCharge(address, cartItems);
+        res.json(shippingInfo);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+};
+
 const orderHistory = async (req, res) => {
     const user = await req.user;
     try {
@@ -38,5 +48,31 @@ const orderHistory = async (req, res) => {
         return res.status(500).send({ error: error.message });
     }
 }
+const trackShipment = async (req, res) => {
+    try {
+        const tracking = await orderService.trackShipment(req.params.id);
+        res.status(200).json(tracking);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+};
 
-module.exports = { createOrder, findOrderById , orderHistory, findAddressById }
+const generateShippingLabel = async (req, res) => {
+    try {
+        const label = await orderService.generateShippingLabel(req.params.id);
+        res.status(200).json(label);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+};
+
+const generateOrderInvoice = async (req, res) => {
+    try {
+        const invoice = await orderService.generateOrderInvoice(req.params.id);
+        res.status(200).json(invoice);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+};
+
+module.exports = { createOrder, findOrderById , orderHistory, findAddressById, trackShipment, generateOrderInvoice, generateShippingLabel, calculateDeliveryCharge }

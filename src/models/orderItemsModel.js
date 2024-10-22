@@ -19,6 +19,9 @@ const orderItemSchema = new Schema({
     type: Number,
     // required: true,
   },
+  weight:{
+    type: Number,
+  },
   discountedPrice: {
     type: Number,
 

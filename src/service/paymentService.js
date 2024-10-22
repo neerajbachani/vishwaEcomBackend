@@ -1,15 +1,21 @@
 
 const { razorpay } = require("../config/razorpayClient.js");
 const orderService = require("../service/orderService.js")
+const shiprocketService = require("../service/shiprocketService.js")
+const mailer = require("../controller/mailer.js")
+const ENV = require("../config/mail.js")
+
+
 
 const createPaymentLink= async (orderId)=>{
     // const { amount, currency, receipt, notes } = reqData;
     try {
         
         const order = await orderService.findOrderById(orderId);
+        const amountInPaise = Math.round(order.totalDiscountedPrice * 100);
     
         const paymentLinkRequest = {
-          amount: order.totalDiscountedPrice * 100,
+          amount: amountInPaise,
           currency: 'INR',
           customer: {
             name: order.user.firstName + ' ' + order.user.lastName,
@@ -21,7 +27,7 @@ const createPaymentLink= async (orderId)=>{
             email: true,
           },
           reminder_enable: true,
-          callback_url: `http://localhost:5173/payment/${orderId}`,
+          callback_url: `https://resingiftstore.com/payment/${orderId}`,
           callback_method: 'get',
         };
     
@@ -47,29 +53,47 @@ const createPaymentLink= async (orderId)=>{
 const updatePaymentInformation = async (reqData) => {
   const paymentId = reqData.payment_id;
   const orderId = reqData.order_id;
-
   try {
-    // Fetch order details (You will need to implement the 'orderService.findOrderById' function)
     let order = await orderService.findOrderById(orderId);
-    
-
-    // Fetch the payment details using the payment ID
     const payment = await razorpay.payments.fetch(paymentId);
-
+     
     if (payment.status === 'captured') {
-      // Update payment details and order status
       order.paymentDetails.paymentId = paymentId;
       order.paymentDetails.paymentStatus = 'COMPLETED';
       order.orderStatus = 'PLACED';
+         
+      // Create Shiprocket order
+      const shiprocketResponse = await shiprocketService.createShiprocketOrder(order);
+      order.shipmentDetails = {
+        shipmentId: shiprocketResponse.shipment_id,
+        shiprocketOrderId: shiprocketResponse.order_id,
+        awbCode: shiprocketResponse.awb_code,
+        courierName: shiprocketResponse.courier_name
+      };
+         
+      await order.save();
 
-      // Save the modified order
-      order = await order.save();
+      // Generate invoice through ShipRocket
+      const invoiceResponse = await shiprocketService.generateAndSendInvoice(shiprocketResponse.order_id);
+      
+      // Send email notification to customer
+      await mailer.sendMail({
+        to: order.user.email,
+        subject: "Order Confirmation and Invoice",
+        text: `Your order ${order._id} has been confirmed and paid. You can download your invoice from this link: ${invoiceResponse.invoice_url}`
+      });
+
+      // Send email notification to admin
+      await mailer.sendMail({
+        to: ENV.ADMIN_EMAIL, // Make sure ADMIN_EMAIL is defined in your .env file
+        subject: "New Order Paid",
+        text: `A new order ${order._id} has been paid by ${order.user.firstName} ${order.user.lastName}. Invoice: ${invoiceResponse.invoice_url}`
+      });
     }
-
-    const resData = { message: 'Your order is placed', success: true };
-    return resData;
+     
+    return { message: 'Your order is placed', success: true };
   } catch (error) {
-    console.error('Error processing payment:', error);
+    console.error('Error processing payment or creating Shiprocket order:', error);
     throw new Error(error.message);
   }
 }

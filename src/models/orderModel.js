@@ -56,6 +56,19 @@ const orderSchema = new Schema({
     type: Number,
     required: true,
   },
+  deliveryCharge: {
+    type: Number,
+    required: true,
+  },
+  estimatedDeliveryDays: {
+    type: Number,
+    required: true,
+  },
+  courierName: {
+    type: String,
+    required: true,
+  },
+
   discount: {
     type: Number,
     // required: true,
@@ -73,6 +86,15 @@ const orderSchema = new Schema({
     type: Date,
     default: Date.now(),
   },
+  shipmentDetails: {
+    shipmentId: String,
+    shiprocketOrderId: String,
+    awbCode: String,
+    courierName: String,
+    trackingUrl: String,
+    labelUrl: String,
+    invoiceUrl: String
+}
 
 });
 
