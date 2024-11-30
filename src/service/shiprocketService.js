@@ -76,7 +76,7 @@ const getOrderWithDetails = async (orderId) => {
         length: 10,
         breadth: 10,
         height: 10,
-        weight: 1,
+        weight: 0.5,
       };
   
     //   console.log('Sending order to Shiprocket:', JSON.stringify(shiprocketOrderData, null, 2));

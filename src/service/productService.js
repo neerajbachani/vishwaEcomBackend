@@ -68,7 +68,7 @@ async function createProduct(reqData, files) {
             vintage: getFirstOrValue(reqData.vintage),
             option: getFirstOrValue(reqData.option),
             details: getFirstOrValue(reqData.details),
-            weight: getFirstOrValue(reqData.weight) || 10,
+            weight: getFirstOrValue(reqData.weight) || 0.5,
             discount: discount,
             productOrder,
             image: result.secure_url,
